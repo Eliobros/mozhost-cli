@@ -1,0 +1,36 @@
+{
+  "name": "mozhost-cli",
+  "version": "2.5.0",
+  "description": "Command-line interface for MozHost container platform",
+  "main": "index.js",
+  "bin": {
+    "mozhost": "./bin/mozhost.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mozhost",
+    "cli",
+    "containers",
+    "docker",
+    "deployment"
+  ],
+  "author": "Eliobros Tech",
+  "license": "MIT",
+  "dependencies": {
+    "archiver": "^6.0.1",
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "form-data": "^4.0.0",
+    "fs-extra": "^11.1.1",
+    "inquirer": "^8.2.5",
+    "ora": "^5.4.1",
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
