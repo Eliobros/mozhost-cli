@@ -232,6 +232,55 @@ class ApiClient {
     return response.data;
   }
 
+  // GitHub
+  async githubDeviceStart() {
+    const client = await this.getClient();
+    const response = await client.post('/api/github/device/start');
+    return response.data;
+  }
+
+  async githubDevicePoll(deviceCode) {
+    const client = await this.getClient();
+    const response = await client.post('/api/github/device/poll', { device_code: deviceCode });
+    return response.data;
+  }
+
+  async githubStatus() {
+    const client = await this.getClient();
+    const response = await client.get('/api/github/status');
+    return response.data;
+  }
+
+  async githubRepos() {
+    const client = await this.getClient();
+    const response = await client.get('/api/github/repos');
+    return response.data;
+  }
+
+  async githubBranches(owner, repo) {
+    const client = await this.getClient();
+    const response = await client.get(`/api/github/repos/${owner}/${repo}/branches`);
+    return response.data;
+  }
+
+  async githubConnect(data) {
+    const client = await this.getClient();
+    const response = await client.post('/api/github/connect', data);
+    return response.data;
+  }
+
+  async githubDeploys(containerId) {
+    const client = await this.getClient();
+    const response = await client.get(`/api/github/deploys/${containerId}`);
+    return response.data;
+  }
+
+  async githubDisconnect() {
+    const client = await this.getClient();
+    const response = await client.delete('/api/github/disconnect');
+    return response.data;
+  }
+
   // Terminal
   async executeCommand(containerId, command) {
     const client = await this.getClient();

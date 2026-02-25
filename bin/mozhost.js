@@ -8,6 +8,7 @@ const deployCommands = require('../src/commands/deploy');
 const domainCommands = require('../src/commands/domains');
 const databaseCommands = require('../src/commands/databases'); // 👈 NOVO
 const terminalCommands = require('../src/commands/terminal');
+const gitCommands = require('../src/commands/git');
 const packageJson = require('../package.json');
 
 program
@@ -45,8 +46,8 @@ program
 program
   .command('create')
   .description('Criar novo container')
-  .requiredOption('-n, --name <name>', 'Nome do container')
-  .requiredOption('-t, --type <type>', 'Tipo (nodejs, python, php)')
+  .option('-n, --name <name>', 'Nome do container')
+  .option('-t, --type <type>', 'Tipo: bot-baileys, bot-whatsapp-web-js, nodejs, python, php')
   .action(containerCommands.create);
 
 program
@@ -187,6 +188,40 @@ program
 
 
 // ============================================
+// GIT / GITHUB COMMANDS
+// ============================================
+program
+  .command('git:auth')
+  .description('Conectar conta GitHub')
+  .action(gitCommands.auth);
+
+program
+  .command('git:status')
+  .description('Ver status da conexão GitHub')
+  .action(gitCommands.status);
+
+program
+  .command('git:repos')
+  .alias('git:ls')
+  .description('Listar repositórios GitHub')
+  .action(gitCommands.repos);
+
+program
+  .command('git:connect [container]')
+  .description('Conectar repositório a um container')
+  .action(gitCommands.connect);
+
+program
+  .command('git:deploys <container>')
+  .description('Ver histórico de deploys via Git')
+  .action(gitCommands.deploys);
+
+program
+  .command('git:disconnect')
+  .description('Desconectar conta GitHub')
+  .action(gitCommands.disconnect);
+
+// ============================================
 // PARSE & HELP
 // ============================================
 program.parse(process.argv);
@@ -206,5 +241,9 @@ if (!process.argv.slice(2).length) {
   console.log(chalk.white('  mozhost domain:list                 # Listar domínios'));
   console.log(chalk.white('  mozhost domain:add bot exemplo.com  # Adicionar domínio'));
   console.log(chalk.white('  mozhost domain:verify exemplo.com   # Verificar domínio'));
+  console.log(chalk.white('  mozhost git:auth                    # Conectar GitHub'));
+  console.log(chalk.white('  mozhost git:repos                   # Listar repositórios'));
+  console.log(chalk.white('  mozhost git:connect                 # Conectar repo a container'));
+  console.log(chalk.white('  mozhost git:deploys <container>     # Histórico de deploys'));
   console.log();
 }

@@ -15,21 +15,21 @@ async function resolveContainer(identifier) {
     // Se não encontrar (404), busca na lista por nome
     if (error.response?.status === 404 || error.response?.data?.error?.includes('not found')) {
       const listResponse = await api.listContainers();
-      
+
       // Procura por nome, ID completo ou ID parcial
-      const found = listResponse.containers.find(c => 
-        c.name === identifier || 
+      const found = listResponse.containers.find(c =>
+        c.name === identifier ||
         c.id === identifier ||
         c.id.startsWith(identifier)
       );
-      
+
       if (!found) {
         // Procura containers similares para sugerir
-        const similar = listResponse.containers.filter(c => 
+        const similar = listResponse.containers.filter(c =>
           c.name.toLowerCase().includes(identifier.toLowerCase()) ||
           c.id.includes(identifier)
         );
-        
+
         if (similar.length > 0) {
           console.log(chalk.yellow('\n💡 Você quis dizer:'));
           similar.forEach(c => {
@@ -38,10 +38,10 @@ async function resolveContainer(identifier) {
         } else {
           console.log(chalk.gray('\n💡 Use: mozhost ls para ver todos os containers'));
         }
-        
+
         throw new Error(`Container "${identifier}" não encontrado`);
       }
-      
+
       return found;
     }
     throw error;
@@ -61,7 +61,7 @@ async function list() {
 
     if (response.containers.length === 0) {
       console.log(chalk.yellow('\n⚠️  Nenhum container encontrado'));
-      console.log(chalk.gray('   Use: mozhost create -n <nome> -t <tipo>'));
+      console.log(chalk.gray('   Use: mozhost create'));
       return;
     }
 
@@ -100,24 +100,159 @@ async function list() {
 }
 
 // ============================================
-// CREATE - Criar novo container
+// CREATE - Criar novo container (INTERATIVO)
 // ============================================
 async function create(options) {
   try {
-    const { name, type } = options;
+    let name = options.name;
+    let type = options.type;
+    let prefix = '!'; // Prefix padrão para bots
 
-    if (!['nodejs', 'python', 'php'].includes(type)) {
-      console.error(chalk.red('❌ Tipo inválido. Use: nodejs, python ou php'));
+    // ========================================
+    // MODO INTERATIVO (se não passar opções)
+    // ========================================
+    if (!name || !type) {
+      console.log(chalk.cyan.bold('\n🔨 Criar Novo Container\n'));
+
+      const answers = await inquirer.prompt([
+        // 1. Nome do container
+        {
+          type: 'input',
+          name: 'name',
+          message: 'Nome do container:',
+          when: !name,
+          validate: (input) => {
+            if (!input || input.trim().length === 0) {
+              return 'Nome não pode ser vazio';
+            }
+            if (!/^[a-z0-9-]+$/.test(input)) {
+              return 'Use apenas letras minúsculas, números e hífens';
+            }
+            if (input.length < 3) {
+              return 'Nome deve ter pelo menos 3 caracteres';
+            }
+            if (input.length > 30) {
+              return 'Nome não pode ter mais de 30 caracteres';
+            }
+            return true;
+          }
+        },
+
+        // 2. Categoria (Bot ou API)
+        {
+          type: 'list',
+          name: 'category',
+          message: 'O que você deseja criar?',
+          when: !type,
+          choices: [
+            { name: '🤖 Bot WhatsApp', value: 'bot' },
+            { name: '🌐 API / Aplicação Web', value: 'api' }
+          ]
+        },
+
+        // 3. Biblioteca do Bot (se escolheu Bot)
+        {
+          type: 'list',
+          name: 'botLibrary',
+          message: 'Escolha a biblioteca:',
+          when: (answers) => answers.category === 'bot',
+          choices: [
+            { name: 'Baileys (recomendado, mais estável)', value: 'baileys' },
+            { name: 'whatsapp-web.js (compatível com navegador)', value: 'whatsapp-web-js' }
+          ]
+        },
+
+        // 4. Prefix do Bot (se escolheu Bot)
+        {
+          type: 'input',
+          name: 'botPrefix',
+          message: 'Prefix dos comandos do bot:',
+          default: '!',
+          when: (answers) => answers.category === 'bot',
+          validate: (input) => {
+            if (!input || input.trim().length === 0) {
+              return 'Prefix não pode ser vazio';
+            }
+            if (input.length > 3) {
+              return 'Prefix deve ter no máximo 3 caracteres';
+            }
+            return true;
+          }
+        },
+
+        // 5. Linguagem da API (se escolheu API)
+        {
+          type: 'list',
+          name: 'apiLanguage',
+          message: 'Escolha a linguagem:',
+          when: (answers) => answers.category === 'api',
+          choices: [
+            { name: 'Node.js (JavaScript/TypeScript)', value: 'nodejs' },
+            { name: 'Python (Flask/Django/FastAPI)', value: 'python' },
+            { name: 'PHP (Laravel/Slim)', value: 'php' }
+          ]
+        }
+      ]);
+
+      // Atribuir valores
+      name = answers.name || name;
+
+      // Montar o tipo baseado nas escolhas
+      if (answers.category === 'bot') {
+        type = `bot-${answers.botLibrary}`;
+        prefix = answers.botPrefix || '!';
+      } else if (answers.category === 'api') {
+        type = answers.apiLanguage;
+      }
+    }
+
+    // ========================================
+    // VALIDAÇÃO FINAL
+    // ========================================
+    const validTypes = ['nodejs', 'python', 'php', 'bot-baileys', 'bot-whatsapp-web-js'];
+
+    if (!validTypes.includes(type)) {
+      console.error(chalk.red('\n❌ Tipo inválido.'));
+      console.error(chalk.yellow('\n  Bots:'));
+      console.error(chalk.white('    • bot-baileys'));
+      console.error(chalk.white('    • bot-whatsapp-web-js'));
+      console.error(chalk.yellow('\n  APIs:'));
+      console.error(chalk.white('    • nodejs'));
+      console.error(chalk.white('    • python'));
+      console.error(chalk.white('    • php\n'));
       process.exit(1);
     }
 
+    // Detectar se é bot
+    const isBot = type.startsWith('bot-');
+
+    // ========================================
+    // CRIAR CONTAINER
+    // ========================================
     console.log(chalk.cyan.bold('\n🔨 Criando container...\n'));
     console.log(chalk.gray(`  Nome: ${name}`));
-    console.log(chalk.gray(`  Tipo: ${type}\n`));
+    console.log(chalk.gray(`  Tipo: ${type}`));
+    if (isBot) {
+      console.log(chalk.gray(`  Prefix: ${prefix}`));
+    }
+    console.log();
 
     const spinner = ora('Criando container...').start();
 
-    const response = await api.createContainer({ name, type });
+    // Payload para criar container
+    const payload = {
+      name,
+      type
+    };
+
+    // Se for bot, adicionar variáveis de ambiente
+    if (isBot) {
+      payload.env = {
+        PREFIX: prefix
+      };
+    }
+
+    const response = await api.createContainer(payload);
 
     spinner.succeed(chalk.green('✅ Container criado com sucesso!'));
 
@@ -129,9 +264,25 @@ async function create(options) {
     console.log(chalk.cyan(`  URL: https://${response.container.domain}`));
     console.log(chalk.white(`  Porta: ${response.container.port}`));
 
+    // ========================================
+    // PRÓXIMOS PASSOS (diferente para Bot vs API)
+    // ========================================
     console.log(chalk.gray('\nPróximos passos:'));
-    console.log(chalk.white(`  1. mozhost start ${response.container.name}`));
-    console.log(chalk.white(`  2. mozhost deploy ${response.container.name}`));
+
+    if (isBot) {
+      console.log(chalk.white(`  1. mozhost start ${response.container.name}`));
+      console.log(chalk.white(`  2. Aguarde ~10 segundos para o bot inicializar`));
+      console.log(chalk.white(`  3. Acesse o painel web para escanear o QR Code:`));
+      console.log(chalk.cyan(`     https://mozhost.topaziocoin.online/containers/${response.container.id}`));
+      console.log(chalk.gray(`\n  💡 Comandos do bot usarão o prefix: ${prefix}`));
+      console.log(chalk.gray(`     Exemplo: ${prefix}ping`));
+    } else {
+      console.log(chalk.white(`  1. mozhost start ${response.container.name}`));
+      console.log(chalk.white(`  2. mozhost deploy ${response.container.name}`));
+      console.log(chalk.gray(`\n  💡 Ou use 'mozhost init' para inicializar um projeto local`));
+    }
+
+    console.log();
 
   } catch (error) {
     console.error(chalk.red('\n❌ Erro ao criar container:'));
@@ -161,7 +312,7 @@ async function start(identifier) {
   try {
     const spinner = ora('Resolvendo container...').start();
     const container = await resolveContainer(identifier);
-    
+
     spinner.text = `Iniciando ${container.name}...`;
     const response = await api.startContainer(container.id);
 
@@ -183,7 +334,7 @@ async function stop(identifier) {
   try {
     const spinner = ora('Resolvendo container...').start();
     const container = await resolveContainer(identifier);
-    
+
     spinner.text = `Parando ${container.name}...`;
     await api.stopContainer(container.id);
 
@@ -203,7 +354,7 @@ async function restart(identifier) {
   try {
     const spinner = ora('Resolvendo container...').start();
     const container = await resolveContainer(identifier);
-    
+
     spinner.text = `Reiniciando ${container.name}...`;
     await api.restartContainer(container.id);
 
@@ -258,7 +409,7 @@ async function logs(identifier, options) {
   try {
     const spinner = ora('Resolvendo container...').start();
     const container = await resolveContainer(identifier);
-    
+
     spinner.text = `Carregando logs de ${container.name}...`;
     const response = await api.getContainerLogs(container.id, options.lines);
 
@@ -288,9 +439,9 @@ async function info(identifier) {
   try {
     const spinner = ora('Resolvendo container...').start();
     const container = await resolveContainer(identifier);
-    
+
     spinner.text = `Carregando informações de ${container.name}...`;
-    
+
     // Busca detalhes completos (com stats se disponível)
     const response = await api.getContainer(container.id);
     spinner.stop();
