@@ -4,7 +4,7 @@
   "description": "Command-line interface for MozHost container platform",
   "main": "index.js",
   "bin": {
-    "mozhost": "./bin/mozhost.js"
+    "mozhost": "bin/mozhost.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
