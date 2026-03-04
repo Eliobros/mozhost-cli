@@ -171,7 +171,7 @@ async function connect(containerId) {
       }
     ]);
 
-    // Listar branches do repositório
+    // Listar branches do repositório selecionado
     const [owner, repo] = selectedRepo.full_name.split('/');
     const branchSpinner = ora('Carregando branches...').start();
     const branchesRes = await api.githubBranches(owner, repo);
@@ -179,7 +179,10 @@ async function connect(containerId) {
 
     let branch = selectedRepo.default_branch;
 
-    if (branchesRes.branches && branchesRes.branches.length > 1) {
+    if (!branchesRes.branches || branchesRes.branches.length === 0) {
+      console.log(chalk.yellow(`\n⚠️  Nenhuma branch encontrada, usando: ${branch}`));
+    } else {
+      // SEMPRE mostra seleção de branch, independente de quantas existem
       const { selectedBranch } = await inquirer.prompt([
         {
           type: 'list',
@@ -312,3 +315,4 @@ module.exports = {
   deploys,
   disconnect
 };
+
