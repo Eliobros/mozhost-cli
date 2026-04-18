@@ -56,7 +56,7 @@ class Config {
 
   async getApiUrl() {
     const config = await this.getGlobalConfig();
-    return config.apiUrl || process.env.MOZHOST_API_URL || 'https://api.mozhost.topaziocoin.online';
+    return config.apiUrl || process.env.MOZHOST_API_URL || 'https://mozhost.shop/api';
   }
 
   async setApiUrl(apiUrl) {
