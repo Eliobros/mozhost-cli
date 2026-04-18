@@ -1,6 +1,6 @@
 {
   "name": "mozhost-cli",
-  "version": "2.7.2",
+  "version": "2.7.3",
   "description": "Command-line interface for MozHost container platform",
   "main": "index.js",
   "bin": {
