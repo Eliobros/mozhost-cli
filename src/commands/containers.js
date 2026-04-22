@@ -8,15 +8,12 @@ const api = require('../utils/api');
 // ============================================
 async function resolveContainer(identifier) {
   try {
-    // Tenta buscar diretamente por ID
     const response = await api.getContainer(identifier);
     return response.container;
   } catch (error) {
-    // Se não encontrar (404), busca na lista por nome
     if (error.response?.status === 404 || error.response?.data?.error?.includes('not found')) {
       const listResponse = await api.listContainers();
 
-      // Procura por nome, ID completo ou ID parcial
       const found = listResponse.containers.find(c =>
         c.name === identifier ||
         c.id === identifier ||
@@ -24,7 +21,6 @@ async function resolveContainer(identifier) {
       );
 
       if (!found) {
-        // Procura containers similares para sugerir
         const similar = listResponse.containers.filter(c =>
           c.name.toLowerCase().includes(identifier.toLowerCase()) ||
           c.id.includes(identifier)
@@ -106,39 +102,26 @@ async function create(options) {
   try {
     let name = options.name;
     let type = options.type;
-    let prefix = '!'; // Prefix padrão para bots
+    let prefix = '!';
 
-    // ========================================
-    // MODO INTERATIVO (se não passar opções)
-    // ========================================
     if (!name || !type) {
       console.log(chalk.cyan.bold('\n🔨 Criar Novo Container\n'));
 
       const answers = await inquirer.prompt([
-        // 1. Nome do container
         {
           type: 'input',
           name: 'name',
           message: 'Nome do container:',
           when: !name,
           validate: (input) => {
-            if (!input || input.trim().length === 0) {
-              return 'Nome não pode ser vazio';
-            }
-            if (!/^[a-z0-9-]+$/.test(input)) {
-              return 'Use apenas letras minúsculas, números e hífens';
-            }
-            if (input.length < 3) {
-              return 'Nome deve ter pelo menos 3 caracteres';
-            }
-            if (input.length > 30) {
-              return 'Nome não pode ter mais de 30 caracteres';
-            }
+            if (!input || input.trim().length === 0) return 'Nome não pode ser vazio';
+            if (!/^[a-z0-9-]+$/.test(input)) return 'Use apenas letras minúsculas, números e hífens';
+            if (input.length < 3) return 'Nome deve ter pelo menos 3 caracteres';
+            if (input.length > 30) return 'Nome não pode ter mais de 30 caracteres';
             return true;
           }
         },
 
-        // 2. Categoria (Bot ou API)
         {
           type: 'list',
           name: 'category',
@@ -146,11 +129,11 @@ async function create(options) {
           when: !type,
           choices: [
             { name: '🤖 Bot WhatsApp', value: 'bot' },
-            { name: '🌐 API / Aplicação Web', value: 'api' }
+            { name: '🌐 API / Aplicação Web', value: 'api' },
+            { name: '📄 Site Estático (HTML/CSS/JS)', value: 'static' }
           ]
         },
 
-        // 3. Biblioteca do Bot (se escolheu Bot)
         {
           type: 'list',
           name: 'botLibrary',
@@ -162,7 +145,6 @@ async function create(options) {
           ]
         },
 
-        // 4. Prefix do Bot (se escolheu Bot)
         {
           type: 'input',
           name: 'botPrefix',
@@ -170,17 +152,12 @@ async function create(options) {
           default: '!',
           when: (answers) => answers.category === 'bot',
           validate: (input) => {
-            if (!input || input.trim().length === 0) {
-              return 'Prefix não pode ser vazio';
-            }
-            if (input.length > 3) {
-              return 'Prefix deve ter no máximo 3 caracteres';
-            }
+            if (!input || input.trim().length === 0) return 'Prefix não pode ser vazio';
+            if (input.length > 3) return 'Prefix deve ter no máximo 3 caracteres';
             return true;
           }
         },
 
-        // 5. Linguagem da API (se escolheu API)
         {
           type: 'list',
           name: 'apiLanguage',
@@ -194,22 +171,22 @@ async function create(options) {
         }
       ]);
 
-      // Atribuir valores
       name = answers.name || name;
 
-      // Montar o tipo baseado nas escolhas
       if (answers.category === 'bot') {
         type = `bot-${answers.botLibrary}`;
         prefix = answers.botPrefix || '!';
       } else if (answers.category === 'api') {
         type = answers.apiLanguage;
+      } else if (answers.category === 'static') {
+        type = 'static';
       }
     }
 
     // ========================================
     // VALIDAÇÃO FINAL
     // ========================================
-    const validTypes = ['nodejs', 'python', 'php', 'bot-baileys', 'bot-whatsapp-web-js'];
+    const validTypes = ['nodejs', 'python', 'php', 'bot-baileys', 'bot-whatsapp-web-js', 'static'];
 
     if (!validTypes.includes(type)) {
       console.error(chalk.red('\n❌ Tipo inválido.'));
@@ -219,16 +196,14 @@ async function create(options) {
       console.error(chalk.yellow('\n  APIs:'));
       console.error(chalk.white('    • nodejs'));
       console.error(chalk.white('    • python'));
-      console.error(chalk.white('    • php\n'));
+      console.error(chalk.white('    • php'));
+      console.error(chalk.yellow('\n  Sites Estáticos:'));
+      console.error(chalk.white('    • static\n'));
       process.exit(1);
     }
 
-    // Detectar se é bot
     const isBot = type.startsWith('bot-');
 
-    // ========================================
-    // CRIAR CONTAINER
-    // ========================================
     console.log(chalk.cyan.bold('\n🔨 Criando container...\n'));
     console.log(chalk.gray(`  Nome: ${name}`));
     console.log(chalk.gray(`  Tipo: ${type}`));
@@ -239,17 +214,10 @@ async function create(options) {
 
     const spinner = ora('Criando container...').start();
 
-    // Payload para criar container
-    const payload = {
-      name,
-      type
-    };
+    const payload = { name, type };
 
-    // Se for bot, adicionar variáveis de ambiente
     if (isBot) {
-      payload.env = {
-        PREFIX: prefix
-      };
+      payload.env = { PREFIX: prefix };
     }
 
     const response = await api.createContainer(payload);
@@ -264,9 +232,6 @@ async function create(options) {
     console.log(chalk.cyan(`  URL: https://${response.container.domain}`));
     console.log(chalk.white(`  Porta: ${response.container.port}`));
 
-    // ========================================
-    // PRÓXIMOS PASSOS (diferente para Bot vs API)
-    // ========================================
     console.log(chalk.gray('\nPróximos passos:'));
 
     if (isBot) {
@@ -276,6 +241,10 @@ async function create(options) {
       console.log(chalk.cyan(`     https://mozhost.topaziocoin.online/containers/${response.container.id}`));
       console.log(chalk.gray(`\n  💡 Comandos do bot usarão o prefix: ${prefix}`));
       console.log(chalk.gray(`     Exemplo: ${prefix}ping`));
+    } else if (type === 'static') {
+      console.log(chalk.white(`  1. mozhost deploy ${response.container.name}`));
+      console.log(chalk.gray(`\n  💡 Coloque seus arquivos HTML/CSS/JS na pasta do projeto`));
+      console.log(chalk.gray(`     e faça o deploy para publicar o site`));
     } else {
       console.log(chalk.white(`  1. mozhost start ${response.container.name}`));
       console.log(chalk.white(`  2. mozhost deploy ${response.container.name}`));
@@ -317,7 +286,6 @@ async function start(identifier) {
     const response = await api.startContainer(container.id);
 
     spinner.succeed(chalk.green(`✅ Container ${container.name} iniciado!`));
-
     console.log(chalk.cyan(`\n🌐 URL: https://${container.domain}`));
 
   } catch (error) {
@@ -442,7 +410,6 @@ async function info(identifier) {
 
     spinner.text = `Carregando informações de ${container.name}...`;
 
-    // Busca detalhes completos (com stats se disponível)
     const response = await api.getContainer(container.id);
     spinner.stop();
 
