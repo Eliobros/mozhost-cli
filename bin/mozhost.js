@@ -10,6 +10,8 @@ const databaseCommands = require('../src/commands/databases'); // 👈 NOVO
 const terminalCommands = require('../src/commands/terminal');
 const gitCommands = require('../src/commands/git');
 const packageJson = require('../package.json');
+const envCommands = require('../src/commands/env');
+
 
 program
   .name('mozhost')
@@ -220,6 +222,34 @@ program
   .command('git:disconnect')
   .description('Desconectar conta GitHub')
   .action(gitCommands.disconnect);
+
+
+// ============================================
+// ENV COMMANDS
+// ============================================
+program
+  .command('env:list <container>')
+  .alias('env:ls')
+  .description('Listar variáveis de ambiente do container')
+  .action(envCommands.list);
+
+program
+  .command('env:add <container> [pairs...]')
+  .description('Adicionar variáveis: VAR=valor VAR2=valor2')
+  .action(envCommands.add);
+
+program
+  .command('env:remove <container> <key>')
+  .alias('env:rm')
+  .description('Remover variável de ambiente')
+  .action(envCommands.remove);
+
+program
+  .command('env:set <container>')
+  .description('Definir variáveis interativamente')
+  .action(envCommands.set);
+
+
 
 // ============================================
 // PARSE & HELP

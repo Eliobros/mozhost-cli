@@ -100,6 +100,44 @@ class ApiClient {
     return response.data;
   }
 
+  // ============================================
+  // Environment Variables
+  // ============================================
+  async getContainerEnv(containerId) {
+    const client = await this.getClient();
+    const response = await client.get(`/api/containers/${containerId}`);
+    const env = response.data.container?.environment
+      ? JSON.parse(response.data.container.environment)
+      : {};
+    return { env };
+  }
+
+  async setContainerEnv(containerId, envVars) {
+    const client = await this.getClient();
+    const current = await client.get(`/api/containers/${containerId}`);
+    const existing = current.data.container?.environment
+      ? JSON.parse(current.data.container.environment)
+      : {};
+    const merged = { ...existing, ...envVars };
+    const response = await client.patch(`/api/containers/${containerId}`, {
+      environment: merged
+    });
+    return response.data;
+  }
+
+  async deleteContainerEnv(containerId, key) {
+    const client = await this.getClient();
+    const current = await client.get(`/api/containers/${containerId}`);
+    const existing = current.data.container?.environment
+      ? JSON.parse(current.data.container.environment)
+      : {};
+    delete existing[key];
+    const response = await client.patch(`/api/containers/${containerId}`, {
+      environment: existing
+    });
+    return response.data;
+  }
+
   // Files
   async listFiles(containerId, dirPath = '/') {
     const client = await this.getClient();
