@@ -48,6 +48,31 @@ class ApiClient {
     const response = await client.get('/api/auth/verify');
     return response.data;
   }
+  
+  async get(endpoint) {
+  const client = await this.getClient();
+  const response = await client.get(endpoint);
+  return response.data;
+}
+
+async post(endpoint, data = {}) {
+  const client = await this.getClient();
+  const response = await client.post(endpoint, data);
+  return response.data;
+}
+
+// CLI Device Flow
+async cliDeviceStart() {
+  const client = await this.getClient();
+  const response = await client.post('/api/auth/cli-device');
+  return response.data;
+}
+
+async cliDevicePoll(token) {
+  const client = await this.getClient();
+  const response = await client.get(`/api/auth/cli-poll/${token}`);
+  return response.data;
+}
 
   // Containers
   async listContainers() {
