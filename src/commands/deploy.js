@@ -10,6 +10,7 @@ const config = require('../utils/config');
 
 const DEFAULT_IGNORE = [
   'node_modules',
+  '.next',
   '.git',
   '.env',
   '.DS_Store',
@@ -181,7 +182,11 @@ async function deploy(containerId, options) {
     const spinner = ora('Verificando container...').start();
     const containerInfo = await api.getContainer(targetContainerId);
 
-    spinner.text = 'Coletando arquivos...';
+    const isNextJs = await detectNextJsProject(projectDir);
+
+    spinner.text = isNextJs
+      ? 'Next.js detectado; coletando arquivos sem .next...'
+      : 'Coletando arquivos...';
     const ignorePatterns = await getIgnorePatterns(projectDir);
     const files = await collectFiles(projectDir, ignorePatterns);
 
@@ -236,6 +241,32 @@ async function deploy(containerId, options) {
     console.error(chalk.red('\n❌ Erro no deploy:'));
     console.error(chalk.red(`   ${error.response?.data?.error || error.message}`));
     process.exit(1);
+  }
+}
+
+async function detectNextJsProject(projectDir) {
+  const packageJsonPath = path.join(projectDir, 'package.json');
+
+  if (!await fs.pathExists(packageJsonPath)) {
+    return false;
+  }
+
+  try {
+    const packageJson = await fs.readJson(packageJsonPath);
+    const dependencySections = [
+      packageJson.dependencies,
+      packageJson.devDependencies,
+      packageJson.peerDependencies,
+      packageJson.optionalDependencies
+    ];
+
+    return dependencySections.some((dependencies) => (
+      dependencies &&
+      typeof dependencies === 'object' &&
+      Object.prototype.hasOwnProperty.call(dependencies, 'next')
+    ));
+  } catch (_error) {
+    return false;
   }
 }
 
